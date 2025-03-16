@@ -1,0 +1,6 @@
+{
+  "name": "brunch-money",
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  }
+}
