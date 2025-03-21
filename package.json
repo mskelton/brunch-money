@@ -1,5 +1,9 @@
 {
   "name": "brunch-money",
+  "license": "ISC",
+  "scripts": {
+    "build": "zip -r brunch-money.zip src/** -x */_metadata/*"
+  },
   "devDependencies": {
     "prettier": "^3.3.3"
   }
