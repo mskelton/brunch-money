@@ -15,5 +15,15 @@
   "host_permissions": [
     "https://my.lunchmoney.app/*",
     "https://beta.lunchmoney.app/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://my.lunchmoney.app/*",
+        "https://beta.lunchmoney.app/*"
+      ],
+      "css": [],
+      "js": ["content-script.js"]
+    }
   ]
 }
