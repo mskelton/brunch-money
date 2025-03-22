@@ -1,13 +1,22 @@
+const cache = new Map()
+
 async function fetchCategories() {
+  if (cache.has("categories")) {
+    return cache.get("categories")
+  }
+
   const res = await fetch("https://api-beta.lunchmoney.app/categories", {
     credentials: "include",
   })
-  const json = await res.json()
 
-  return json.assignable.map((category) => ({
+  const json = await res.json()
+  const categories = json.assignable.map((category) => ({
     ...category,
     name: parseName(category.name),
   }))
+
+  cache.set("categories", categories)
+  return categories
 }
 
 /** @param {string} name */
@@ -47,22 +56,102 @@ async function budgetURLs() {
     }
 
     const link = document.createElement("a")
+    link.classList.add("bm-cell")
     link.href = url
     link.textContent = categoryName
     cell.replaceChildren(link)
   })
 }
 
-const notRun = Symbol("false")
-const animation = "brunch-money-selector-observer"
-const registerAnimation = onetime(() => {
+const SINKING_FUNDS = ["Car Repairs", "Car Replacement"]
+
+function sinkingFunds() {
+  const divider = document.querySelector(
+    ".right .ui.card .divider:last-of-type",
+  )
+  if (!divider) {
+    return
+  }
+
+  const rows = [
+    ...document.querySelectorAll(
+      ".p-budget-table tbody tr:has(td[colspan='1']:first-child)",
+    ),
+  ]
+
+  const totalAmount = rows
+    .filter((row) => SINKING_FUNDS.includes(row.children[2].textContent))
+    .map((row) => {
+      const rawValue = row.children[8].textContent
+      const value = parseFloat(rawValue.replace(/[$,]/g, ""))
+      return value
+    })
+    .reduce((a, b) => a + b, 0)
+
+  const formattedAmount = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(totalAmount)
+
+  const sinkingFunds = document.querySelector("#sinking-funds")
+  if (sinkingFunds) {
+    sinkingFunds.textContent = formattedAmount
+    return
+  }
+
+  const wrapper = document.createElement("div")
+  wrapper.className = "card-content-wrapper"
+
+  const content = document.createElement("div")
+  content.className = "card-content no-wrap"
+
+  const label = document.createElement("span")
+  label.className = "card-text ellipsis font--bold"
+  label.textContent = "Total Sinking Funds"
+
+  const amount = document.createElement("span")
+  amount.id = "sinking-funds"
+  amount.className = "card-number"
+  amount.textContent = formattedAmount
+
+  content.appendChild(label)
+  content.appendChild(amount)
+  wrapper.appendChild(content)
+  divider.after(wrapper)
+}
+
+const animation = "bm-selector-observer"
+
+function registerAnimation() {
+  if (cache.has(animation)) {
+    return
+  }
+
   const style = document.createElement("style")
   style.textContent = `@keyframes ${animation} {}`
   document.head.append(style)
-})
+  cache.set(animation, true)
+}
 
-observe(".p-budget-table:has(.padded-cell)", () => {
-  budgetURLs()
+function init() {
+  observe(".p-budget-table:not(:has(.bm-cell)) tbody tr:first-of-type", () => {
+    budgetURLs()
+    sinkingFunds()
+  })
+}
+
+observe("h1", (h1) => {
+  init()
+
+  const observer = new MutationObserver(() => {
+    init()
+  })
+
+  observer.observe(h1, {
+    characterData: true,
+    childList: true,
+    subtree: true,
+  })
 })
 
 /**
@@ -70,8 +159,7 @@ observe(".p-budget-table:has(.padded-cell)", () => {
  * @param {() => void} listener
  */
 function observe(selector, listener) {
-  const seenMark = `brunch-money-seen-${selector}`
-
+  const seenMark = `bm-seen-${selector.replace(/[^a-zA-Z0-9]/g, "-")}`
   registerAnimation()
 
   const rule = document.createElement("style")
@@ -83,29 +171,11 @@ function observe(selector, listener) {
   document.body.prepend(rule)
 
   globalThis.addEventListener("animationstart", (event) => {
-    const target = event.target
-    // The target can match a selector even if the animation actually happened on a ::before pseudo-element, so it needs an explicit exclusion here
-    if (target.classList.contains(seenMark) || !target.matches(selector)) {
+    if (event.target.classList.contains(seenMark)) {
       return
     }
 
-    // Removes this specific selector’s animation once it was seen
-    target.classList.add(seenMark)
-
-    listener(target)
+    event.target.classList.add(seenMark)
+    listener(event.target)
   })
-}
-
-/** @param {() => void} fn */
-function onetime(fn) {
-  let returnValue = notRun
-
-  return function (...args) {
-    if (returnValue !== notRun) {
-      return returnValue
-    }
-
-    returnValue = Reflect.apply(fn, this, args)
-    return returnValue
-  }
 }
