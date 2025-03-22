@@ -63,7 +63,7 @@ async function budgetURLs() {
   })
 }
 
-const SINKING_FUNDS = ["Car Repairs", "Car Replacement"]
+const SINKING_FUNDS = ["Car Replacement", "Roth IRAs"]
 
 function sinkingFunds() {
   const divider = document.querySelector(
