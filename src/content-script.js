@@ -121,7 +121,10 @@ async function budgetURLs() {
 
   cells.forEach((cell) => {
     const categoryName = cell.textContent
-    const category = categories.get(categoryName)
+    const category = categories
+      .values()
+      .find((cat) => cat.name === categoryName)
+
     if (!category) {
       return
     }
@@ -146,15 +149,6 @@ function formatMoney(amount) {
   }).format(amount)
 }
 
-async function getTotalSinkingFunds() {
-  const categories = await getCategories()
-  const totalAmount = SINKING_FUNDS.map(
-    (id) => categories.get(id)?.balance ?? 0,
-  ).reduce((a, b) => a + parseFloat(b), 0)
-
-  return totalAmount
-}
-
 async function sinkingFunds() {
   const divider = document.querySelector(
     ".right .ui.card .divider:last-of-type",
@@ -163,7 +157,7 @@ async function sinkingFunds() {
     return
   }
 
-  const totalAmount = await getTotalSinkingFunds()
+  const totalAmount = await getSinkingFunds()
   const formattedAmount = formatMoney(totalAmount)
 
   const sinkingFunds = document.querySelector("#sinking-funds")
@@ -243,8 +237,28 @@ async function getSinkingFunds() {
     include_recurring: "true",
   })
 
-  const res = await get(`/summary?${params.toString()}`)
-  return res.transactions.reduce((a, b) => a + b.amount, 0)
+  const budget = await get(`/summary?${params.toString()}`)
+  const totalAmount = SINKING_FUNDS.map((id) => {
+    const category = budget.categories.find(
+      (cat) => cat.properties.category.id === id,
+    )
+
+    if (!category) {
+      return 0
+    }
+
+    const occurence = category.occurrences.find(
+      (occ) => occ.start_date === formatCalendarDate(startDate),
+    )
+
+    if (!occurence) {
+      return 0
+    }
+
+    return occurence.available
+  }).reduce((a, b) => a + b, 0)
+
+  return totalAmount
 }
 
 async function allySplit() {
@@ -256,7 +270,7 @@ async function allySplit() {
     assets.find((asset) => asset.id === ACCOUNTS.loan).balance,
   )
 
-  const sinkingFunds = await getTotalSinkingFunds()
+  const sinkingFunds = await getSinkingFunds()
   const reserved = loan + sinkingFunds
   const available = ally - reserved
 
@@ -280,7 +294,7 @@ function init() {
   }
 }
 
-observe("h1", (h1) => {
+observe("h1", () => {
   init()
 
   const observer = new MutationObserver(() => {
