@@ -113,32 +113,6 @@ function buildURL(category) {
   return `https://beta.lunchmoney.app/transactions/${year}/${month}?category=${category}&match=all&time=month`
 }
 
-async function budgetURLs() {
-  const categories = await getCategories()
-  const cells = document.querySelectorAll(
-    ".p-budget-table tbody tr:has(td[colspan='1']:first-child) td:nth-child(3) > div > div:first-child",
-  )
-
-  cells.forEach((cell) => {
-    const categoryName = cell.textContent
-    const category = categories
-      .values()
-      .find((cat) => cat.name === categoryName)
-
-    if (!category) {
-      return
-    }
-
-    const url = buildURL(category.id)
-    if (!url) {
-      return
-    }
-
-    const link = a({ class: "bm-cell", href: url }, categoryName)
-    cell.replaceChildren(link)
-  })
-}
-
 /**
  * @param {number} amount
  */
@@ -287,7 +261,6 @@ function init() {
     observe(
       ".p-budget-table:not(:has(.bm-cell)) tbody tr:first-of-type",
       () => {
-        budgetURLs()
         sinkingFunds()
       },
     )
