@@ -191,8 +191,12 @@ function insertAllyRow(id, label, amount) {
   document.querySelector(ALLY)?.after(node)
 }
 
+function padZero(num) {
+  return num < 10 ? `0${num}` : num
+}
+
 function formatCalendarDate(date) {
-  return date.toISOString().split("T")[0]
+  return `${date.getFullYear()}-${padZero(date.getMonth() + 1)}-${padZero(date.getDate())}`
 }
 
 async function getSinkingFunds() {
@@ -267,7 +271,7 @@ function init() {
   }
 }
 
-observe("h1", () => {
+observe("h1", (h1) => {
   init()
 
   const observer = new MutationObserver(() => {
