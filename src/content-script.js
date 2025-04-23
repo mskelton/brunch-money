@@ -100,28 +100,6 @@ function getBudget(params) {
 }
 
 /**
- * @param {string} name
- */
-function parseName(name) {
-  return new DOMParser().parseFromString(name, "text/html").body.textContent
-}
-
-/**
- * @param {string} category
- */
-function buildURL(category) {
-  const { pathname } = window.location
-  const match = pathname.match(/\/budget\/(\d{4})\/(\d{2})\/(\d{2})/)
-  if (!match) {
-    return null
-  }
-
-  const [_, year, month] = match
-
-  return `https://beta.lunchmoney.app/transactions/${year}/${month}?category=${category}&match=all&time=month`
-}
-
-/**
  * @param {number} amount
  */
 function formatMoney(amount) {
@@ -129,37 +107,6 @@ function formatMoney(amount) {
     style: "currency",
     currency: "USD",
   }).format(amount)
-}
-
-/** @param {number} accountId */
-async function sinkingFunds(accountId) {
-  const divider = document.querySelector(
-    ".right .ui.card .divider:last-of-type",
-  )
-  if (!divider) {
-    return
-  }
-
-  const totalAmount = await getSinkingCategories(accountId)
-  const formattedAmount = formatMoney(totalAmount)
-
-  const id = `sinking-funds-${accountId}`
-  const sinkingFunds = document.getElementById(id)
-  if (sinkingFunds) {
-    sinkingFunds.textContent = formattedAmount
-    return
-  }
-
-  const node = div(
-    { class: "card-content-wrapper" },
-    div(
-      { class: "card-content no-wrap" },
-      span({ class: "card-text ellipsis font--bold" }, "Total Sinking Funds"),
-      span({ id, class: "card-number" }, formattedAmount),
-    ),
-  )
-
-  divider.after(node)
 }
 
 /**
@@ -280,12 +227,6 @@ function init() {
   if (window.location.pathname.includes("/overview")) {
     observe(accountCard(ACCOUNTS.ally), () => splitAccount(ACCOUNTS.ally))
     observe(accountCard(ACCOUNTS.summit), () => splitAccount(ACCOUNTS.summit))
-  }
-
-  if (window.location.pathname.includes("/budget")) {
-    observe(".p-budget-table:not(:has(.bm-cell)) tbody tr:first-of-type", () =>
-      sinkingFunds(ACCOUNTS.ally),
-    )
   }
 }
 
