@@ -17,9 +17,18 @@ const SINKING_FUNDS = {
     ],
   },
   [ACCOUNTS.summit]: {
-    categories: [
-      1391947, // Clothing
-    ],
+    /** @param {BudgetCategory} category */
+    categories: (category) => {
+      const allyCategories = SINKING_FUNDS[ACCOUNTS.ally].categories
+      if (typeof allyCategories === "function") {
+        return false
+      }
+
+      return (
+        category.properties.budget_settings.rollover_option &&
+        !allyCategories.includes(category.properties.category.id)
+      )
+    },
   },
 }
 
@@ -81,8 +90,14 @@ function getAssets() {
  */
 
 /**
+ * @typedef BudgetProperties
+ * @property {{ id: number }} category
+ * @property {{ rollover_option: string }} budget_settings
+ */
+
+/**
  * @typedef BudgetCategory
- * @property {{ category: { id: number } }} properties
+ * @property {BudgetProperties} properties
  * @property {BudgetOccurrence[]} occurrences
  */
 
@@ -177,7 +192,17 @@ async function getSinkingCategories(accountId) {
   })
 
   const budget = await getBudget(params)
-  const totalAmount = SINKING_FUNDS[accountId].categories
+  let categories = SINKING_FUNDS[accountId].categories
+
+  if (typeof categories === "function") {
+    const predicate = categories
+
+    categories = budget.categories
+      .filter((category) => predicate(category))
+      .map((category) => category.properties.category.id)
+  }
+
+  const totalAmount = categories
     .map((id) => {
       const category = budget.categories.find(
         (cat) => cat.properties.category.id === id,
