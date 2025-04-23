@@ -1,24 +1,41 @@
-const { a, div, span, style } = makeTags(["a", "div", "span", "style"])
+// @ts-check
 
-const SINKING_FUNDS = [
-  1391931, // Roth IRAs
-  1433085, // Car Replacement
-]
+const { a, div, span, style } = makeTags(["a", "div", "span", "style"])
 
 const ACCOUNTS = {
   ally: 238120,
   loan: 154822,
+  summit: 231611,
 }
 
-const ANIMATION = "bm-selector-observer"
-const ALLY = `.left > .card > .content > .card-content-wrapper:has(.account-sub-name [href*='account=${ACCOUNTS.ally}'])`
+const SINKING_FUNDS = {
+  [ACCOUNTS.ally]: {
+    accounts: [ACCOUNTS.loan],
+    categories: [
+      1391931, // Roth IRAs
+      1433085, // Car Replacement
+    ],
+  },
+  [ACCOUNTS.summit]: {
+    categories: [
+      1391947, // Clothing
+    ],
+  },
+}
 
-class Cache {
+/** @param {number} accountId */
+const accountCard = (accountId) =>
+  `.left > .card > .content > .card-content-wrapper:has(.account-sub-name [href*='account=${accountId}'])`
+
+const ANIMATION = "bm-selector-observer"
+
+class AsyncCache {
   #cache = new Map()
 
   /**
+   * @template {() => any} T
    * @param {string} key
-   * @param {T extends (key: string) => Promise<any>} fn
+   * @param {T} fn
    */
   async get(key, fn) {
     if (this.#cache.has(key)) {
@@ -31,8 +48,9 @@ class Cache {
   }
 }
 
-const cache = new Cache()
+const cache = new AsyncCache()
 
+/** @param {string} url */
 async function get(url) {
   return cache.get(url, async () => {
     const res = await fetch(`https://api-beta.lunchmoney.app${url}`, {
@@ -45,50 +63,40 @@ async function get(url) {
 }
 
 /**
- * @returns {Promise<Map<number, any>>}
+ * @typedef Asset
+ * @property {number} id
+ * @property {string} balance
  */
-function getCategories() {
-  return cache.get("#categories", async () => {
-    const res = await get("/categories")
-    const map = new Map()
 
-    function addToMap(category) {
-      map.set(category.id, {
-        ...category,
-        name: parseName(category.name),
-      })
-
-      if (category.children) {
-        category.children.forEach(addToMap)
-      }
-    }
-
-    res.nested.forEach(addToMap)
-
-    return map
-  })
+/** @returns {Promise<Asset[]>} */
+function getAssets() {
+  return get("/assets")
 }
 
 /**
- * @param {string} id
- * @param {any} categories
+ * @typedef BudgetOccurrence
+ * @property {number} id
+ * @property {string} start_date
+ * @property {number} available
  */
-function findCategory(id, categories) {
-  const category = categories.flattened.find((cat) => cat.id === id)
-  if (!category) {
-    return null
-  }
 
-  if (category.group_id) {
-    const group = categories.nested.find((cat) => cat.id === category.group_id)
-    if (!group) {
-      return null
-    }
+/**
+ * @typedef BudgetCategory
+ * @property {{ category: { id: number } }} properties
+ * @property {BudgetOccurrence[]} occurrences
+ */
 
-    return group.children.find((cat) => cat.id === id)
-  }
+/**
+ * @typedef Budget
+ * @property {BudgetCategory[]} categories
+ */
 
-  return categories.nested.find((cat) => cat.id === id)
+/**
+ * @param {URLSearchParams} params
+ * @returns {Promise<Budget>}
+ */
+function getBudget(params) {
+  return get(`/summary?${params.toString()}`)
 }
 
 /**
@@ -123,7 +131,8 @@ function formatMoney(amount) {
   }).format(amount)
 }
 
-async function sinkingFunds() {
+/** @param {number} accountId */
+async function sinkingFunds(accountId) {
   const divider = document.querySelector(
     ".right .ui.card .divider:last-of-type",
   )
@@ -131,10 +140,11 @@ async function sinkingFunds() {
     return
   }
 
-  const totalAmount = await getSinkingFunds()
+  const totalAmount = await getSinkingCategories(accountId)
   const formattedAmount = formatMoney(totalAmount)
 
-  const sinkingFunds = document.querySelector("#sinking-funds")
+  const id = `sinking-funds-${accountId}`
+  const sinkingFunds = document.getElementById(id)
   if (sinkingFunds) {
     sinkingFunds.textContent = formattedAmount
     return
@@ -145,7 +155,7 @@ async function sinkingFunds() {
     div(
       { class: "card-content no-wrap" },
       span({ class: "card-text ellipsis font--bold" }, "Total Sinking Funds"),
-      span({ id: "sinking-funds", class: "card-number" }, formattedAmount),
+      span({ id, class: "card-number" }, formattedAmount),
     ),
   )
 
@@ -153,21 +163,22 @@ async function sinkingFunds() {
 }
 
 /**
+ * @param {number} accountId
  * @param {string} id
  * @param {string} label
  * @param {number} amount
  */
-function insertAllyRow(id, label, amount) {
+function createSplitNode(accountId, id, label, amount) {
+  const scopedId = `${id}-${accountId}`
   const formattedAmount = formatMoney(amount)
-  const amountId = `ally-${id}`
-  const existingNode = document.getElementById(amountId)
+  const existingNode = document.getElementById(scopedId)
   if (existingNode) {
     existingNode.textContent = formattedAmount
     return
   }
 
   const node = div(
-    { class: "card-content-wrapper" },
+    { style: "margin-top: 10px" },
     div(
       { class: "card-content no-wrap" },
       span(
@@ -183,23 +194,26 @@ function insertAllyRow(id, label, amount) {
       ),
       span(
         { class: "card-number" },
-        span({ class: "account-sub-amount", id: amountId }, formattedAmount),
+        span({ class: "account-sub-amount", id: scopedId }, formattedAmount),
       ),
     ),
   )
 
-  document.querySelector(ALLY)?.after(node)
+  document.querySelector(accountCard(accountId))?.appendChild(node)
 }
 
+/** @param {number} num */
 function padZero(num) {
   return num < 10 ? `0${num}` : num
 }
 
+/** @param {Date} date */
 function formatCalendarDate(date) {
   return `${date.getFullYear()}-${padZero(date.getMonth() + 1)}-${padZero(date.getDate())}`
 }
 
-async function getSinkingFunds() {
+/** @param {number} accountId */
+async function getSinkingCategories(accountId) {
   const startDate = new Date()
   startDate.setDate(1)
 
@@ -215,58 +229,62 @@ async function getSinkingFunds() {
     include_recurring: "true",
   })
 
-  const budget = await get(`/summary?${params.toString()}`)
-  const totalAmount = SINKING_FUNDS.map((id) => {
-    const category = budget.categories.find(
-      (cat) => cat.properties.category.id === id,
-    )
+  const budget = await getBudget(params)
+  const totalAmount = SINKING_FUNDS[accountId].categories
+    .map((id) => {
+      const category = budget.categories.find(
+        (cat) => cat.properties.category.id === id,
+      )
 
-    if (!category) {
-      return 0
-    }
+      if (!category) {
+        return 0
+      }
 
-    const occurence = category.occurrences.find(
-      (occ) => occ.start_date === formatCalendarDate(startDate),
-    )
+      const occurence = category.occurrences.find(
+        (occ) => occ.start_date === formatCalendarDate(startDate),
+      )
 
-    if (!occurence) {
-      return 0
-    }
+      if (!occurence) {
+        return 0
+      }
 
-    return occurence.available
-  }).reduce((a, b) => a + b, 0)
+      return occurence.available
+    })
+    .reduce((a, b) => a + b, 0)
 
   return totalAmount
 }
 
-async function allySplit() {
-  const assets = await get("/assets")
-  const ally = parseFloat(
-    assets.find((asset) => asset.id === ACCOUNTS.ally).balance,
-  )
-  const loan = parseFloat(
-    assets.find((asset) => asset.id === ACCOUNTS.loan).balance,
+/** @param {number} accountId */
+async function splitAccount(accountId) {
+  const assets = await getAssets()
+  const total = parseFloat(
+    assets.find((asset) => asset.id === accountId)?.balance ?? "0",
   )
 
-  const sinkingFunds = await getSinkingFunds()
-  const reserved = loan + sinkingFunds
-  const available = ally - reserved
+  const sinkingAccounts = assets
+    .filter((asset) => SINKING_FUNDS[accountId].accounts?.includes(asset.id))
+    .map((asset) => parseFloat(asset.balance))
+    .reduce((acc, cur) => acc + cur, 0)
 
-  insertAllyRow("available-funds", "Available", available)
-  insertAllyRow("sinking-funds", "Reserved", reserved)
+  const sinkingCategories = await getSinkingCategories(accountId)
+
+  const reserved = sinkingAccounts + sinkingCategories
+  const available = total - reserved
+
+  createSplitNode(accountId, "sinking-funds", "Reserved", reserved)
+  createSplitNode(accountId, "available-funds", "Available", available)
 }
 
 function init() {
   if (window.location.pathname.includes("/overview")) {
-    observe(ALLY, () => allySplit())
+    observe(accountCard(ACCOUNTS.ally), () => splitAccount(ACCOUNTS.ally))
+    observe(accountCard(ACCOUNTS.summit), () => splitAccount(ACCOUNTS.summit))
   }
 
   if (window.location.pathname.includes("/budget")) {
-    observe(
-      ".p-budget-table:not(:has(.bm-cell)) tbody tr:first-of-type",
-      () => {
-        sinkingFunds()
-      },
+    observe(".p-budget-table:not(:has(.bm-cell)) tbody tr:first-of-type", () =>
+      sinkingFunds(ACCOUNTS.ally),
     )
   }
 }
@@ -309,6 +327,10 @@ function observe(selector, listener) {
   document.body.prepend(rule)
 
   globalThis.addEventListener("animationstart", (event) => {
+    if (!(event.target instanceof HTMLElement)) {
+      return
+    }
+
     if (event.target.classList.contains(seenMark)) {
       return
     }
@@ -318,10 +340,12 @@ function observe(selector, listener) {
   })
 }
 
+/** @typedef {string | Element} HNode */
+
 /**
  * @param {string} tag
  * @param {Record<string, string>} props
- * @param {Node[]} children
+ * @param {HNode[]} children
  * @returns {HTMLElement}
  */
 function h(tag, props, children) {
@@ -336,21 +360,23 @@ function h(tag, props, children) {
   return element
 }
 
-/** @typedef {string | Element} Node */
-
-/**
- * @typedef {{
- *   (props: Record<string, string>, ...children: Node[]) => HTMLElement;
- *   (...children: Node[]) => HTMLElement;
- * }} TagFunction
- */
-
-/**
- * @param {string} tag
- * @returns {TagFunction}
- */
+/** @param {string} tag */
 function makeTag(tag) {
-  /** @type {TagFunction} */
+  /**
+   * @overload
+   * @param {Record<string, string>} props
+   * @param {...HNode[]} children
+   */
+
+  /**
+   * @overload
+   * @param {...HNode[]} children
+   */
+
+  /**
+   * @param {HNode | Record<string, string>} props
+   * @param {HNode[]} children
+   */
   return function (props, ...children) {
     if (typeof props === "string" || props instanceof Element) {
       return h(tag, {}, [props])
@@ -361,12 +387,16 @@ function makeTag(tag) {
 }
 
 /**
- * @param {string[]} tags
- * @returns {Record<string, TagFunction>}
+ * @template {string} T
+ * @param {T[]} tags
+ * @returns {Record<T, ReturnType<makeTag>>}
  */
 function makeTags(tags) {
+  /** @type {any} */
+  const acc = {}
+
   return tags.reduce((acc, tag) => {
     acc[tag] = makeTag(tag)
     return acc
-  }, {})
+  }, acc)
 }
