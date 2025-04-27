@@ -220,7 +220,7 @@ async function getSinkingCategories(accountId) {
         return 0
       }
 
-      return occurence.available
+      return Math.max(occurence.available, 0)
     })
     .reduce((a, b) => a + b, 0)
 
