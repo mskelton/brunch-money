@@ -22,7 +22,7 @@
         "https://my.lunchmoney.app/*",
         "https://beta.lunchmoney.app/*"
       ],
-      "css": [],
+      "css": ["styles.css"],
       "js": ["content-script.js"]
     }
   ]

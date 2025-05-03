@@ -1,0 +1,12 @@
+body:not(.no-dark).dark-mode
+  .card-content-wrapper:has([href*="231609"])
+  .account-sub-amount,
+body:not(.no-dark).dark-mode
+  .card-content-wrapper:last-child
+  .account-sub-amount {
+  color: #e05951 !important;
+
+  &::before {
+    content: "-";
+  }
+}
