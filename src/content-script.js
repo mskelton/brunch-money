@@ -248,10 +248,26 @@ async function splitAccount(accountId) {
   createSplitNode(accountId, "available-funds", "Available", available)
 }
 
+/** @param {HTMLElement} root */
+function fixAccounts(root) {
+  root.querySelectorAll(".card-content-wrapper:has(.caret)").forEach((node) => {
+    const title = node.querySelector(".card-text .clickable")?.textContent
+
+    if (title?.endsWith("(1)")) {
+      node.nextElementSibling?.querySelector(".hierarchy-line-icon-4")?.remove()
+      node.remove()
+    }
+  })
+}
+
 function init() {
   if (window.location.pathname.includes("/overview")) {
     observe(accountCard(ACCOUNTS.ally), () => splitAccount(ACCOUNTS.ally))
     observe(accountCard(ACCOUNTS.summit), () => splitAccount(ACCOUNTS.summit))
+    observe(
+      ".left > .card > .content:has(.card-content-wrapper .account-sub-name)",
+      (element) => fixAccounts(element),
+    )
   }
 }
 
