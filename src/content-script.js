@@ -78,8 +78,9 @@ async function get(url) {
  */
 
 /** @returns {Promise<Asset[]>} */
-function getAssets() {
-  return get("/assets")
+async function getAssets() {
+  const res = await get("/assets")
+  return res ?? []
 }
 
 /**
@@ -248,9 +249,9 @@ async function splitAccount(accountId) {
   createSplitNode(accountId, "available-funds", "Available", available)
 }
 
-/** @param {HTMLElement} root */
-function fixAccounts(root) {
-  root.querySelectorAll(".card-content-wrapper:has(.caret)").forEach((node) => {
+/** @param {HTMLElement} node */
+function fixAccounts(node) {
+  node.querySelectorAll(".card-content-wrapper:has(.caret)").forEach((node) => {
     const title = node.querySelector(".card-text .clickable")?.textContent
 
     if (title?.endsWith("(1)")) {
@@ -266,7 +267,7 @@ function init() {
     observe(accountCard(ACCOUNTS.summit), () => splitAccount(ACCOUNTS.summit))
     observe(
       ".left > .card > .content:has(.card-content-wrapper .account-sub-name)",
-      (element) => fixAccounts(element),
+      (node) => fixAccounts(node),
     )
   }
 }

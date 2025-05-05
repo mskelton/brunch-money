@@ -6,3 +6,11 @@ body .card-content-wrapper:last-child .account-sub-amount {
     content: "-";
   }
 }
+
+.p-budget-table
+  tbody
+  tr:has(td[colspan="3"])
+  :is(.table-cell-input, .table-cell-amounts)
+  > * {
+  display: none !important;
+}
