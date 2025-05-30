@@ -6,6 +6,7 @@ const ACCOUNTS = {
   ally: 238120,
   loan: 154822,
   summit: 231611,
+  chase: 231609,
 }
 
 const SINKING_FUNDS = {
@@ -17,6 +18,7 @@ const SINKING_FUNDS = {
     ],
   },
   [ACCOUNTS.summit]: {
+    accounts: [ACCOUNTS.chase],
     /** @param {BudgetCategory} category */
     categories: (category) => {
       const allyCategories = SINKING_FUNDS[ACCOUNTS.ally].categories
@@ -129,14 +131,13 @@ function formatMoney(amount) {
  * @param {number} accountId
  * @param {string} id
  * @param {string} label
- * @param {number} amount
+ * @param {string} amount
  */
 function createSplitNode(accountId, id, label, amount) {
   const scopedId = `${id}-${accountId}`
-  const formattedAmount = formatMoney(amount)
   const existingNode = document.getElementById(scopedId)
   if (existingNode) {
-    existingNode.textContent = formattedAmount
+    existingNode.textContent = amount
     return
   }
 
@@ -157,7 +158,7 @@ function createSplitNode(accountId, id, label, amount) {
       ),
       span(
         { class: "card-number" },
-        span({ class: "account-sub-amount", id: scopedId }, formattedAmount),
+        span({ class: "account-sub-amount", id: scopedId }, amount),
       ),
     ),
   )
@@ -230,6 +231,9 @@ async function getSinkingCategories(accountId) {
 
 /** @param {number} accountId */
 async function splitAccount(accountId) {
+  createSplitNode(accountId, "sinking-funds", "Reserved", "-")
+  createSplitNode(accountId, "available-funds", "Available", "-")
+
   const assets = await getAssets()
   const total = parseFloat(
     assets.find((asset) => asset.id === accountId)?.balance ?? "0",
@@ -245,8 +249,13 @@ async function splitAccount(accountId) {
   const reserved = sinkingAccounts + sinkingCategories
   const available = total - reserved
 
-  createSplitNode(accountId, "sinking-funds", "Reserved", reserved)
-  createSplitNode(accountId, "available-funds", "Available", available)
+  createSplitNode(accountId, "sinking-funds", "Reserved", formatMoney(reserved))
+  createSplitNode(
+    accountId,
+    "available-funds",
+    "Available",
+    formatMoney(available),
+  )
 }
 
 /** @param {HTMLElement} node */
