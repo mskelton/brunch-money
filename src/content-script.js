@@ -138,9 +138,7 @@ async function getAssets() {
 }
 
 /**
- * @typedef BudgetOccurrence
- * @property {number} id
- * @property {string} start_date
+ * @typedef BudgetTotal
  * @property {number} available
  */
 
@@ -153,7 +151,7 @@ async function getAssets() {
 /**
  * @typedef BudgetCategory
  * @property {BudgetProperties} properties
- * @property {BudgetOccurrence[]} occurrences
+ * @property {BudgetTotal} totals
  */
 
 /**
@@ -235,14 +233,13 @@ async function getSinkingCategories(accountId) {
 
   const endDate = new Date()
   endDate.setMonth(startDate.getMonth() + 1)
-  endDate.setDate(endDate.getDate() - 1)
+  endDate.setDate(0)
 
   const params = new URLSearchParams({
     start_date: formatCalendarDate(startDate),
     end_date: formatCalendarDate(endDate),
-    include_exclude_from_budgets: "false",
-    include_occurrences: "true",
-    include_recurring: "true",
+    include_totals: "true",
+    strict_dates: "true",
   })
 
   const budget = await getBudget(params)
@@ -266,15 +263,8 @@ async function getSinkingCategories(accountId) {
         return 0
       }
 
-      const occurence = category.occurrences.find(
-        (occ) => occ.start_date === formatCalendarDate(startDate),
-      )
-
-      if (!occurence) {
-        return 0
-      }
-
-      return Math.max(occurence.available, 0)
+      console.log(category.totals.available)
+      return Math.max(category.totals.available, 0)
     })
     .reduce((a, b) => a + b, 0)
 
