@@ -263,7 +263,6 @@ async function getSinkingCategories(accountId) {
         return 0
       }
 
-      console.log(category.totals.available)
       return Math.max(category.totals.available, 0)
     })
     .reduce((a, b) => a + b, 0)
