@@ -62,26 +62,35 @@ const CATEGORIES = {
 
 const SINKING_FUNDS = {
   [ACCOUNTS.ally]: {
-    accounts: [ACCOUNTS.loan],
-    categories: [
-      CATEGORIES.rothIras,
-      CATEGORIES.carReplacement,
-      CATEGORIES.homeImprovement,
-    ],
+    "Emergency Fund": {
+      amount: 30_000,
+    },
+    "Mortgage Fund": {
+      accounts: [ACCOUNTS.loan],
+    },
+    "Reserved": {
+      categories: [
+        CATEGORIES.rothIras,
+        CATEGORIES.carReplacement,
+        CATEGORIES.homeImprovement,
+      ],
+    },
   },
   [ACCOUNTS.summit]: {
-    accounts: [ACCOUNTS.chase],
-    /** @param {BudgetCategory} category */
-    categories: (category) => {
-      const allyCategories = SINKING_FUNDS[ACCOUNTS.ally].categories
-      if (typeof allyCategories === "function") {
-        return false
-      }
+    Reserved: {
+      accounts: [ACCOUNTS.chase],
+      /** @param {BudgetCategory} category */
+      categories: (category) => {
+        const allyCategories = SINKING_FUNDS[ACCOUNTS.ally].Reserved.categories
+        if (typeof allyCategories === "function") {
+          return false
+        }
 
-      return (
-        category.properties.budget_settings.rollover_option &&
-        !allyCategories.includes(category.properties.category.id)
-      )
+        return (
+          category.properties.budget_settings.rollover_option &&
+          !allyCategories.includes(category.properties.category.id)
+        )
+      },
     },
   },
 }
@@ -226,8 +235,8 @@ function formatCalendarDate(date) {
   return `${date.getFullYear()}-${padZero(date.getMonth() + 1)}-${padZero(date.getDate())}`
 }
 
-/** @param {number} accountId */
-async function getSinkingCategories(accountId) {
+/** @param {number[] | ((category: BudgetCategory) => boolean)} categories */
+async function getSinkingCategories(categories) {
   const startDate = new Date()
   startDate.setDate(1)
 
@@ -243,7 +252,6 @@ async function getSinkingCategories(accountId) {
   })
 
   const budget = await getBudget(params)
-  let categories = SINKING_FUNDS[accountId].categories
 
   if (typeof categories === "function") {
     const predicate = categories
@@ -272,7 +280,10 @@ async function getSinkingCategories(accountId) {
 
 /** @param {number} accountId */
 async function splitAccount(accountId) {
-  createSplitNode(accountId, "sinking-funds", "Reserved", "-")
+  for (const key of Object.keys(SINKING_FUNDS[accountId])) {
+    createSplitNode(accountId, key, key, "-")
+  }
+
   createSplitNode(accountId, "available-funds", "Available", "-")
 
   const assets = await getAssets()
@@ -280,22 +291,33 @@ async function splitAccount(accountId) {
     assets.find((asset) => asset.id === accountId)?.balance ?? "0",
   )
 
-  const sinkingAccounts = assets
-    .filter((asset) => SINKING_FUNDS[accountId].accounts?.includes(asset.id))
-    .map((asset) => parseFloat(asset.balance))
-    .reduce((acc, cur) => acc + cur, 0)
+  let totalSinking = 0
 
-  const sinkingCategories = await getSinkingCategories(accountId)
+  const promises = Object.entries(SINKING_FUNDS[accountId]).map(
+    async ([key, value]) => {
+      const sinkingAccounts = assets
+        .filter((asset) => value.accounts?.includes(asset.id))
+        .map((asset) => parseFloat(asset.balance))
+        .reduce((acc, cur) => acc + cur, 0)
 
-  const reserved = sinkingAccounts + sinkingCategories
-  const available = total - reserved
+      const sinkingCategories = value.categories
+        ? await getSinkingCategories(value.categories)
+        : 0
 
-  createSplitNode(accountId, "sinking-funds", "Reserved", formatMoney(reserved))
+      const fund = sinkingAccounts + sinkingCategories + (value.amount ?? 0)
+      totalSinking += fund
+
+      createSplitNode(accountId, key, key, formatMoney(fund))
+    },
+  )
+
+  await Promise.all(promises)
+
   createSplitNode(
     accountId,
     "available-funds",
     "Available",
-    formatMoney(available),
+    formatMoney(total - totalSinking),
   )
 }
 
