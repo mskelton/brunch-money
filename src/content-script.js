@@ -7,6 +7,7 @@ const ACCOUNTS = {
   loan: 154822,
   summit: 231611,
   chase: 231609,
+  cd: 185366,
 }
 
 const CATEGORIES = {
@@ -61,13 +62,15 @@ const CATEGORIES = {
 }
 
 const SINKING_FUNDS = {
-  [ACCOUNTS.ally]: {
-    "Emergency Fund": {
-      amount: 30_000,
-    },
+  [ACCOUNTS.cd]: {
     "Mortgage Fund": {
       accounts: [ACCOUNTS.loan],
     },
+    "Emergency Fund": {
+      amount: 30_000,
+    },
+  },
+  [ACCOUNTS.ally]: {
     "Long Term Sinking Funds": {
       categories: [
         CATEGORIES.rothIras,
@@ -97,7 +100,7 @@ const SINKING_FUNDS = {
 
 /** @param {number} accountId */
 const accountCard = (accountId) =>
-  `.left > .card > .content > .card-content-wrapper:has(.account-sub-name [href*='account=${accountId}'])`
+  `.left > .card > .content > .card-content-wrapper:has(.account-sub-name :is([href*='account=${accountId}'], [href*='asset=${accountId}']))`
 
 const ANIMATION = "bm-selector-observer"
 
@@ -335,8 +338,11 @@ function fixAccounts(node) {
 
 function init() {
   if (window.location.pathname.includes("/overview")) {
-    observe(accountCard(ACCOUNTS.ally), () => splitAccount(ACCOUNTS.ally))
-    observe(accountCard(ACCOUNTS.summit), () => splitAccount(ACCOUNTS.summit))
+    Object.keys(SINKING_FUNDS).forEach((accountId) => {
+      const id = parseInt(accountId)
+      observe(accountCard(id), () => splitAccount(id))
+    })
+
     observe(
       ".left > .card > .content:has(.card-content-wrapper .account-sub-name)",
       (node) => fixAccounts(node),
