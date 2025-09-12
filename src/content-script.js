@@ -62,37 +62,15 @@ const CATEGORIES = {
 }
 
 const SINKING_FUNDS = {
-  [ACCOUNTS.cd]: {
-    "Mortgage Fund": {
-      accounts: [ACCOUNTS.loan],
-    },
+  [ACCOUNTS.ally]: {
     "Emergency Fund": {
       amount: 30_000,
     },
-  },
-  [ACCOUNTS.ally]: {
-    "Long Term Sinking Funds": {
-      categories: [
-        CATEGORIES.rothIras,
-        CATEGORIES.carReplacement,
-        CATEGORIES.homeImprovement,
-      ],
-    },
-    "Short Term Sinking Funds": {
+    "Sinking Funds": {
       accounts: [ACCOUNTS.chase],
       /** @param {BudgetCategory} category */
       categories: (category) => {
-        const otherCategories =
-          SINKING_FUNDS[ACCOUNTS.ally]["Long Term Sinking Funds"].categories
-
-        if (typeof otherCategories === "function") {
-          return false
-        }
-
-        return (
-          category.properties.budget_settings.rollover_option &&
-          !otherCategories.includes(category.properties.category.id)
-        )
+        return category.properties.budget_settings.rollover_option
       },
     },
   },
