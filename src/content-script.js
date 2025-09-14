@@ -3,11 +3,18 @@
 const { a, div, span, style } = makeTags(["a", "div", "span", "style"])
 
 const ACCOUNTS = {
-  ally: 238120,
-  loan: 154822,
-  summit: 231611,
+  allyChecking: 295673,
+  allySavings: 238120,
+  boltonRoadLoan: 191505,
+  brokerage: 158172,
+  cash: 158174,
   chase: 231609,
-  cd: 185366,
+  house: 154821,
+  houseLoan: 154822,
+  ramp401k: 231657,
+  summitChecking: 231611,
+  summitSavings: 231610,
+  wex: 261256,
 }
 
 const CATEGORIES = {
@@ -62,16 +69,18 @@ const CATEGORIES = {
 }
 
 const SINKING_FUNDS = {
-  [ACCOUNTS.ally]: {
-    "Emergency Fund": {
-      amount: 30_000,
-    },
+  [ACCOUNTS.allySavings]: {
     "Sinking Funds": {
       accounts: [ACCOUNTS.chase],
       /** @param {BudgetCategory} category */
       categories: (category) => {
         return category.properties.budget_settings.rollover_option
       },
+    },
+  },
+  [ACCOUNTS.brokerage]: {
+    "Emergency Fund": {
+      amount: 30_000,
     },
   },
 }
