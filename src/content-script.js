@@ -77,8 +77,6 @@ const SINKING_FUNDS = {
         return category.properties.budget_settings.rollover_option
       },
     },
-  },
-  [ACCOUNTS.brokerage]: {
     "Emergency Fund": {
       amount: 30_000,
     },
