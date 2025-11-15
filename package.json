@@ -5,6 +5,7 @@
     "build": "zip -r brunch-money.zip src/** -x */_metadata/*"
   },
   "devDependencies": {
-    "prettier": "^3.3.3"
+    "prettier": "^3.3.3",
+    "typescript": "^5.9.3"
   }
 }
