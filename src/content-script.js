@@ -86,6 +86,7 @@ async function getAssets() {
 /**
  * @typedef BudgetTotal
  * @property {number} available
+ * @property {number} budgeted
  */
 
 /**
@@ -208,7 +209,7 @@ async function getSinkingCategories(categories) {
         return 0
       }
 
-      return Math.max(category.totals.available, 0)
+      return Math.max(category.totals.available, category.totals.budgeted)
     })
     .reduce((a, b) => a + b, 0)
 
@@ -384,7 +385,7 @@ function makeTag(tag) {
 /**
  * @template {string} T
  * @param {T[]} tags
- * @returns {Record<T, ReturnType<makeTag>>}
+ * @returns {Record<T, ReturnType<typeof makeTag>>}
  */
 function makeTags(tags) {
   /** @type {any} */
