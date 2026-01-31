@@ -178,8 +178,8 @@ async function getSinkingCategories(categories) {
   const startDate = new Date()
   startDate.setDate(1)
 
-  const endDate = new Date()
-  endDate.setMonth(startDate.getMonth() + 1)
+  const endDate = new Date(startDate)
+  endDate.setMonth(endDate.getMonth() + 1)
   endDate.setDate(0)
 
   const params = new URLSearchParams({
